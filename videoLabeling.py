@@ -40,7 +40,8 @@ class MainWindow():
         )
         btn1.pack(anchor=tk.W)
         btn2.pack(anchor=tk.W)
-        self.labels.append(tk.Radiobutton(main,))
+        self.labels.append(btn1)
+        self.labels.append(btn2)
 
         img=np.zeros((640,640,3),np.uint8)
         img=Image.fromarray(img)
