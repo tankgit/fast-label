@@ -7,11 +7,19 @@ from PIL import Image, ImageTk
 from matplotlib import pyplot as plt
 
 
-#TODO:
+# TODO:
 #   1. Editable label name
-#   2. 
+#   2.
 
 class MainWindow():
+
+    class DrawedLabel():
+        def __init__(self, text):
+            self.x1 = -1
+            self.y1 = -1
+            self.x2 = -1
+            self.y2 = -1
+            self.text = text
 
     def __init__(self, main):
         self.main = main
@@ -153,13 +161,14 @@ class MainWindow():
         self.labelBox.config(yscrollcommand=self.scroll_1.set)
         self.scroll_1.config(command=self.labelBox.yview)
 
-        self.selectedNum = 0
+        self.selectedNum = None
         self.selectedTxt = ''
         self.labelBox.bind('<<ListboxSelect>>', self.selectLabel)
 
-        self.drawBtn= tk.Button(
+        self.drawBtn = tk.Button(
             self.labelFrame,
-            text='Draw a Label'
+            text='Draw a Label',
+            command=self.drawLabel
         )
         self.drawBtn.pack(
             side=tk.TOP,
@@ -192,22 +201,51 @@ class MainWindow():
         )
         self.usedLabel.config(yscrollcommand=self.scroll_2.set)
         self.scroll_2.config(command=self.usedLabel.yview)
+
+        self.workLabelNum = None
+        self.workLabelTxt = ''
+        self.usedLabel.bind('<<ListboxSelect>>', self.selectDraw)
+
         # image box
-        img = np.zeros((600, 900, 3), np.uint8)
-        img = Image.fromarray(img)
-        imgtk = ImageTk.PhotoImage(image=img)
-        self.container = tk.Label(
+        self.draws = []
+
+        self.canvas = tk.Canvas(
             self.imageFrame,
-            bg='black'
+            bg='black',
         )
-        self.container.pack(
+        self.canvas.pack(
             side=tk.TOP,
             expand=tk.YES,
+            fill=tk.BOTH,
             padx=10,
             pady=10
         )
-        self.container.bind('<Motion>', self.showMouse)
-        self.container.bind('<Button 1>', self.showClick)
+        self.canvas.bind('<Motion>', self.showMouse)
+        self.canvas.bind('<Button 1>', self.showPoint1)
+        self.canvas.bind('<Button 3>', self.showPoint2)
+        self.canvas.bind('<Configure>',self.canvasChange)
+        self.c_width=self.canvas.winfo_width()
+        self.c_height=self.canvas.winfo_height()
+        self.fileName=None
+        self.imgtk=None
+        # img=np.zeros((640,640,3),np.uint8)
+        # img=Image.fromarray(img)
+        # imgtk=ImageTk.PhotoImage(image=img)
+        # self.container = tk.Label(
+        #     self.canvas,
+        #     bg='black',
+        #     image=imgtk
+        # )
+        
+        # self.container.pack(
+        #     side=tk.TOP,
+        #     expand=tk.YES,
+        #     padx=10,
+        #     pady=10
+        # )
+        # self.container.bind('<Motion>', self.showMouse)
+        # self.container.bind('<Button 1>', self.showPoint1)
+        # self.container.bind('<Button 3>', self.showPoint2)
 
         # Status box
         self.mousePosStr = tk.StringVar()
@@ -256,26 +294,47 @@ class MainWindow():
             padx=10
         )
 
-
         main.mainloop()
 
     def selectLabel(self, e):
         self.selectedNum = self.labelBox.curselection()
         self.selectedTxt = self.labelBox.get(self.selectedNum)
-        print(self.selectedNum[0], self.selectedTxt)
 
-    # Button functions
+        self.workLabelNum = None
+        self.workLabelTxt = ''
+        self.reDraw()
+        print('Select: ', self.selectedNum[0], self.selectedTxt)
+
+    def selectDraw(self, e=None):
+        self.workLabelNum = self.usedLabel.curselection()
+        self.workLabelTxt = self.usedLabel.get(self.workLabelNum)
+
+        a = self.draws[self.workLabelNum[0]]
+
+        self.curLabelStr.set(
+            'Current Label: ' + str(self.workLabelNum[0]) + '-' + a.text)
+        self.pointStr1.set(
+            'Point 1: (' + str(a.x1) + ',' + str(a.y1) + ')')
+        self.pointStr2.set(
+            'Point 2: (' + str(a.x2) + ',' + str(a.y2) + ')')
+
+        self.selectedNum = None
+        self.selectedTxt = ''
+        self.reDraw()
+        print('Working: ', self.workLabelNum[0], self.workLabelTxt)
+
+    ## Button Functions ##
     def openFile(self):
         file = fd.LoadFileDialog(self.main)
-        fileName = file.go()
-        if fileName != '':
-            print(fileName)
-            img = cv2.imread(fileName)
+        self.fileName = file.go()
+        if self.fileName != '':
+            print(self.fileName)
+            img = cv2.imread(self.fileName)
             b, g, r = cv2.split(img)
             img = cv2.merge((r, g, b))
             img = Image.fromarray(img)
-            imgtk = ImageTk.PhotoImage(image=img)
-            self.container.config(image=imgtk)
+            self.imgtk = ImageTk.PhotoImage(image=img)
+            self.canvas.create_image(self.c_width/2,self.c_height/2,image=self.imgtk)
         self.main.mainloop()
 
     def openInfo(self):
@@ -297,14 +356,69 @@ class MainWindow():
                 self.selectedTxt = ''
                 self.selectedNum = None
 
-    # Mouse Event
+    def drawLabel(self):
+        if self.selectedNum != None:
+            self.usedLabel.insert(tk.END, self.selectedTxt)
+            self.usedLabel.selection_clear(0, tk.END)
+            self.usedLabel.select_set(tk.END)
+
+            self.draws.append(self.DrawedLabel(self.selectedTxt))
+            self.selectDraw()
+
+    ## Mouse Event ##
     def showMouse(self, event):
         self.mousePosStr.set('X: ' + str(event.x) + ' Y: ' + str(event.y))
 
-    def showClick(self, event):
-        print(event.x, event.y)
+    def showPoint1(self, event):
+        if self.workLabelNum:
+            self.pointStr1.set(
+                'Point 1: (' + str(event.x) + ',' + str(event.y) + ')')
+            self.draws[self.workLabelNum[0]].x1 = event.x
+            self.draws[self.workLabelNum[0]].y1 = event.y
+            self.reDraw()
+            print(event.x, event.y)
+
+    def showPoint2(self, event):
+        if self.workLabelNum:
+            self.pointStr2.set(
+                'Point 2: (' + str(event.x) + ',' + str(event.y) + ')')
+            self.draws[self.workLabelNum[0]].x2 = event.x
+            self.draws[self.workLabelNum[0]].y2 = event.y
+            self.reDraw()
+            print(event.x, event.y)
+
+    ## Draw Canvas ##
+    def canvasChange(self,event):
+        self.c_width=self.canvas.winfo_width()
+        self.c_height=self.canvas.winfo_height()
+        self.reDraw()
+
+    def reDraw(self):
+        r = 7
+        self.canvas.delete(tk.ALL)
+        self.canvas.create_image(self.c_width/2,self.c_height/2,image=self.imgtk)
+        if len(self.draws)>0:
+            for i in range(len(self.draws)):
+                if self.workLabelNum and i == self.workLabelNum[0]:
+                    color_in='red'
+                    color_out='black'
+                else:
+                    color_in='grey'
+                    color_out='#999'
+
+                x1 = self.draws[i].x1
+                y1 = self.draws[i].y1
+                x2 = self.draws[i].x2
+                y2 = self.draws[i].y2
+                if x1>0 and y1>0 and x2>0 and y2>0:
+                    self.canvas.create_line(x1,y1,x1,y2,x2,y2,x2,y1,x1,y1,fill=color_in,width=2)
+                if x1>=0 and y1>=0:
+                    self.canvas.create_oval(x1 - r, y1 - r, x1 + r, y1 + r, fill=color_in, outline=color_out, width=3)
+                if x2>=0 and y2>=0:
+                    self.canvas.create_oval(x2 - r, y2 - r, x2 + r, y2 + r, fill=color_in, outline=color_out, width=3)
 
 
+# Main
 root = tk.Tk()
 MainWindow(root)
 root.mainloop()
