@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 # TODO:
 #   1. Editable label name
 #   2.
-
+# save test in company commit
 class MainWindow():
 
     class DrawedLabel():
