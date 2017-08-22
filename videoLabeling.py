@@ -5,19 +5,10 @@ import tkinter.filedialog as fd
 import tkinter.messagebox as msgb
 from PIL import Image, ImageTk
 from matplotlib import pyplot as plt
-<<<<<<< HEAD
 import os
 import json
 import imageio
 
-=======
-
-
-# TODO:
-#   1. Editable label name
-#   2.
-# save test in company commit
->>>>>>> 3940eb3eebd22043f3fbeefdaf3f9f0e03b6713f
 class MainWindow():
 
     class DrawedLabel():
