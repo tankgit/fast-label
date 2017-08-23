@@ -1,10 +1,9 @@
+import six
 import numpy as np
-import cv2
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as msgb
 from PIL import Image, ImageTk
-from matplotlib import pyplot as plt
 import os
 import json
 import imageio
@@ -27,7 +26,7 @@ class MainWindow():
         # Variables
         self.main = main
         self.supportImg = ['jpg', 'png', 'bmp']
-        self.supportVdo = ['avi', 'mp4', 'wmv']
+        self.supportVdo = ['avi', 'mp4', 'wmv','mkv']
 
         self.files = []
         self.workLabelTxt = ''
@@ -427,10 +426,10 @@ class MainWindow():
 
     # Button Event
     def openFile(self):
-        self.resetAll()
         self.files = []
+        self.filePath = ()
         self.filePath = fd.askopenfilename()
-        if self.filePath != '':
+        if self.filePath != ():
             typeStr = self.filePath[-3:].lower()
             if typeStr in self.supportImg:
                 self.curImg=0
@@ -445,12 +444,13 @@ class MainWindow():
     def openFolder(self):
         self.fileType=0
         folder = fd.askdirectory()
-        for img in os.listdir(folder):
-            if img[-3:] in self.supportImg:
-                self.files.append(os.path.join(folder, img))
-        self.totalNumStr.set('Total: '+str(len(self.files)))
-        self.curImg = 0
-        self.openImg(self.files[self.curImg])
+        if folder!='' and folder!=():
+            for img in os.listdir(folder):
+                if img[-3:] in self.supportImg:
+                    self.files.append(os.path.join(folder, img))
+            self.totalNumStr.set('Total: '+str(len(self.files)))
+            self.curImg = 0
+            self.openImg(self.files[self.curImg])
 
     def resetAll(self):
         self.draws = []
@@ -468,9 +468,7 @@ class MainWindow():
         self.filePath = path
         self.fileType = 0
         print(self.filePath)
-        img = cv2.imread(self.filePath)
-        b, g, r = cv2.split(img)
-        img = cv2.merge((r, g, b))
+        img = imageio.imread(self.filePath)
         self.ratio = img.shape[1] / img.shape[0]
         self.i_width = img.shape[1]
         self.i_height = img.shape[0]
@@ -559,8 +557,8 @@ class MainWindow():
     def jumpFrame(self):
         if self.fileType!=None:
             if self.jumpNum.get()!='':
-                self.curImg = int(self.jumpNum.get())
                 self.saveLabel()
+                self.curImg = int(self.jumpNum.get())
                 if self.fileType==0:
                     self.openImg(self.filePath)
                 else:
