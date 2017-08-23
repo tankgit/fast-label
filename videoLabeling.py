@@ -8,6 +8,10 @@ import os
 import json
 import imageio
 
+PROJECT_NAME = 'Fast Label'
+VERSION = '1.0'
+
+
 class MainWindow():
 
     class DrawedLabel():
@@ -26,17 +30,19 @@ class MainWindow():
         # Variables
         self.main = main
         self.supportImg = ['jpg', 'png', 'bmp']
-        self.supportVdo = ['avi', 'mp4', 'wmv','mkv']
+        self.supportVdo = ['avi', 'mp4', 'wmv', 'mkv']
+
+        self.filePath = None
 
         self.files = []
         self.workLabelTxt = ''
 
         self.draws = []
         self.img = None
-        self.imgtk= None
+        self.imgtk = None
         self.vdo = None
         self.curImg = None
-        self.fileType= None
+        self.fileType = None
 
         self.totalNumStr = tk.StringVar()
         self.mousePosStr = tk.StringVar()
@@ -50,6 +56,9 @@ class MainWindow():
         self.initLabelFrame()
         self.initImageFrame()
         self.initStatusFrame()
+
+        self.keyBinding()
+        self.mode = 0
 
         main.mainloop()
 
@@ -95,7 +104,7 @@ class MainWindow():
         )
 
     def initButtonFrame(self):
-        self.imgBtn = tk.Button(
+        self.fileBtn = tk.Button(
             self.buttonFrame,
             anchor=tk.CENTER,
             text='Open File',
@@ -103,7 +112,7 @@ class MainWindow():
             height=3,
             command=self.openFile
         )
-        self.imgBtn.pack(
+        self.fileBtn.pack(
             side=tk.LEFT,
             padx=10,
             pady=10
@@ -185,43 +194,50 @@ class MainWindow():
             pady=10
         )
 
-        self.addLbBtn = tk.Button(
+        self.info = tk.Button(
             self.buttonFrame,
-            anchor=tk.CENTER,
-            text='Add',
-            width=6,
+            width=5,
             height=3,
-            command=self.addLabel
+            text='Help',
+            command=self.showInfo
         )
-        self.addLbBtn.pack(
-            side=tk.RIGHT,
-            padx=10,
-            pady=10
-        )
-
-        self.delLbBtn = tk.Button(
-            self.buttonFrame,
-            anchor=tk.CENTER,
-            text='Delete',
-            width=6,
-            height=3,
-            command=self.delLabel
-        )
-        self.delLbBtn.pack(
+        self.info.pack(
             side=tk.RIGHT,
             padx=10,
             pady=10
         )
 
     def initLabelFrame(self):
-        self.textLabel = tk.Text(
-            self.labelFrame,
-            height=5,
-            width=32
+        self.labelBtnFrame = tk.LabelFrame(
+            self.labelFrame
         )
-        self.textLabel.pack(
+        self.labelBtnFrame.pack(
             side=tk.TOP,
-            pady=2
+            fill=tk.X
+        )
+
+        self.addLbBtn = tk.Button(
+            self.labelBtnFrame,
+            anchor=tk.CENTER,
+            text='Add',
+            command=self.addLabel
+        )
+        self.addLbBtn.pack(
+            side=tk.LEFT,
+            padx=10,
+            pady=10
+        )
+
+        self.delLbBtn = tk.Button(
+            self.labelBtnFrame,
+            anchor=tk.CENTER,
+            text='Delete',
+            command=self.delLabel
+        )
+        self.delLbBtn.pack(
+            side=tk.LEFT,
+            padx=10,
+            pady=10
         )
 
         self.allLabelFrame = tk.LabelFrame(
@@ -230,17 +246,27 @@ class MainWindow():
         self.allLabelFrame.pack(
             side=tk.TOP,
         )
+        self.labelBoxNum = tk.Listbox(
+            self.allLabelFrame,
+            width=4,
+            height=10,
+        )
+        self.labelBoxNum.pack(
+            side=tk.LEFT,
+        )
         self.labelBox = tk.Listbox(
             self.allLabelFrame,
-            width=30,
-            height=10
+            width=26,
+            height=10,
+
         )
         self.labelBox.pack(
             side=tk.LEFT,
             fill=tk.BOTH
         )
         for i in range(0, 3):
-            self.labelBox.insert(tk.END, 'Label ' + str(i))
+            self.labelBox.insert(tk.END, 'Label ' + str(i + 1))
+            self.labelBoxNum.insert(tk.END, i + 1)
 
         self.scroll_1 = tk.Scrollbar(
             self.allLabelFrame,
@@ -271,13 +297,16 @@ class MainWindow():
         )
         self.drawBtn.pack(
             side=tk.LEFT,
-            padx=15,
+            padx=10,
             pady=10
         )
-        self.editBtn=tk.Button(
+        self.editBtn = tk.Button(
             self.drawBtnFrame,
             text='Edit',
             command=self.editLabel
+        )
+        self.editBtn.pack(
+            side=tk.LEFT,
         )
         self.delDrawBtn = tk.Button(
             self.drawBtnFrame,
@@ -286,7 +315,7 @@ class MainWindow():
         )
         self.delDrawBtn.pack(
             side=tk.LEFT,
-            padx=15,
+            padx=10,
             pady=10
         )
         self.usedLabelFrame = tk.LabelFrame(
@@ -296,9 +325,17 @@ class MainWindow():
             side=tk.TOP,
         )
 
+        self.usedLabelNum = tk.Listbox(
+            self.usedLabelFrame,
+            width=4,
+            height=10,
+        )
+        self.usedLabelNum.pack(
+            side=tk.LEFT,
+        )
         self.usedLabel = tk.Listbox(
             self.usedLabelFrame,
-            width=30,
+            width=26,
             height=10
         )
         self.usedLabel.pack(
@@ -348,10 +385,10 @@ class MainWindow():
         self.pointStr1.set('Point 1: NULL')
         self.pointStr2.set('Point 2: NULL')
 
-        self.totalNum= tk.Message(
+        self.totalNum = tk.Message(
             self.statusFrame,
             textvariable=self.totalNumStr,
-            width=150            
+            width=150
         )
         self.totalNum.pack(
             side=tk.TOP
@@ -392,6 +429,64 @@ class MainWindow():
             padx=10
         )
 
+    # Hotkey Binding
+    def keyBinding(self):
+        self.main.bind('<Control-f>', self.openFile)
+        self.main.bind('<a>', self.preImg)
+        self.main.bind('<d>', self.nxtImg)
+        self.main.bind('<s>', self.saveLabel)
+        self.main.bind('<q>', self.drawMode)
+        self.main.bind('<w>', self.selectMode)
+        self.main.bind('<e>', self.editLabel)
+        self.main.bind('<space>', self.key2draw)
+
+    def drawMode(self, event=None):
+        if self.mode == 0:
+            self.cmd = tk.Entry(
+                self.labelFrame,
+                width=10
+            )
+            self.cmd.pack(
+                side=tk.TOP,
+                fill=tk.X
+            )
+            self.mode = 1
+        self.cmd.focus()
+
+    def selectMode(self, event=None):
+        if self.mode == 0:
+            self.cmd = tk.Entry(
+                self.labelFrame,
+                width=10
+            )
+            self.cmd.pack(
+                side=tk.TOP,
+                fill=tk.X
+            )
+            self.mode = 2
+        self.cmd.focus()
+
+    def key2draw(self, event=None):
+        if self.mode == 1:
+            self.mode = 0
+            try:
+                self.selectedNum = (int(self.cmd.get()) - 1,)
+                if self.selectedNum[0] < self.labelBox.size():
+                    self.selectedTxt = self.labelBox.get(self.selectedNum[0])
+                    self.drawLabel()
+            except Exception as error:
+                pass
+        elif self.mode == 2:
+            self.mode = 0
+            try:
+                self.workLabelNum = (int(self.cmd.get()) - 1,)
+                self.usedLabel.selection_clear(0, tk.END)
+                self.usedLabel.select_set(self.workLabelNum[0])
+                self.selectDraw()
+            except Exception as error:
+                pass
+        self.cmd.pack_forget()
+
     # Selection Listener
     def selectLabel(self, e):
         self.selectedNum = self.labelBox.curselection()
@@ -413,7 +508,7 @@ class MainWindow():
         a = self.draws[self.workLabelNum[0]]
 
         self.curLabelStr.set(
-            'Current Label: ' + str(self.workLabelNum[0]) + '-' + a.text)
+            'Current Label: ' + str(self.workLabelNum[0] + 1) + '-' + a.text)
         self.pointStr1.set(
             'Point 1: (' + str(a.x1) + ',' + str(a.y1) + ')')
         self.pointStr2.set(
@@ -425,36 +520,38 @@ class MainWindow():
         print('Working: ', self.workLabelNum[0], self.workLabelTxt)
 
     # Button Event
-    def openFile(self):
+    # Menu Button
+    def openFile(self, event=None):
         self.files = []
         self.filePath = ()
         self.filePath = fd.askopenfilename()
         if self.filePath != ():
             typeStr = self.filePath[-3:].lower()
             if typeStr in self.supportImg:
-                self.curImg=0
+                self.curImg = 0
                 self.openImg(self.filePath)
                 self.totalNumStr.set('Total: 1')
             elif typeStr in self.supportVdo:
                 self.openVdo(self.filePath)
-                self.totalNumStr.set('Total: '+str(self.vdo.get_length()))
+                self.totalNumStr.set('Total: ' + str(self.vdo.get_length()))
             else:
                 print('File type not support.')
 
     def openFolder(self):
-        self.fileType=0
+        self.fileType = 0
         folder = fd.askdirectory()
-        if folder!='' and folder!=():
+        if folder != '' and folder != ():
             for img in os.listdir(folder):
                 if img[-3:] in self.supportImg:
                     self.files.append(os.path.join(folder, img))
-            self.totalNumStr.set('Total: '+str(len(self.files)))
+            self.totalNumStr.set('Total: ' + str(len(self.files)))
             self.curImg = 0
             self.openImg(self.files[self.curImg])
 
     def resetAll(self):
         self.draws = []
         self.usedLabel.delete(0, tk.END)
+        self.usedLabelNum.delete(0, tk.END)
         self.workLabelNum = None
         self.workLabelTxt = ''
         self.curLabelStr.set('Current Label: None')
@@ -522,11 +619,12 @@ class MainWindow():
                 tem.cx1, tem.cy1 = self.restoreCoord(tem.x1, tem.y1)
                 tem.cx2, tem.cy2 = self.restoreCoord(tem.x2, tem.y2)
                 self.usedLabel.insert(tk.END, tem.text)
+                self.usedLabelNum.insert(tk.END, self.usedLabel.size())
                 self.usedLabel.selection_clear(0, tk.END)
                 self.draws.append(tem)
         self.reDraw()
 
-    def preImg(self):
+    def preImg(self, event=None):
         if self.fileType == 0:
             if len(self.files) > 0:
                 if self.curImg != 0:
@@ -540,7 +638,7 @@ class MainWindow():
                     self.curImg -= 1
                     self.openFrame()
 
-    def nxtImg(self):
+    def nxtImg(self, event=None):
         if self.fileType == 0:
             if len(self.files) > 0:
                 if self.curImg < len(self.files) - 1:
@@ -555,16 +653,20 @@ class MainWindow():
                     self.openFrame()
 
     def jumpFrame(self):
-        if self.fileType!=None:
-            if self.jumpNum.get()!='':
+        if self.fileType != None:
+            if self.jumpNum.get() != '':
                 self.saveLabel()
-                self.curImg = int(self.jumpNum.get())
-                if self.fileType==0:
-                    self.openImg(self.filePath)
-                else:
-                    self.openFrame()
+                try:
+                    self.curImg = int(self.jumpNum.get())
+                    if self.fileType == 0:
+                        self.openImg(self.filePath)
+                    else:
+                        self.openFrame()
+                except Exception as error:
+                    print(
+                        'Error: The input must be a number between 0 to (video length) or (image amount)')
 
-    def saveLabel(self):
+    def saveLabel(self, event=None):
         if self.filePath != None:
             savePath = ''
             if self.fileType == 0:
@@ -590,39 +692,163 @@ class MainWindow():
             elif os.path.exists(savePath):
                 os.remove(savePath)
 
+    # Label Button
     def addLabel(self):
+        self.addWindow = tk.Tk()
+        self.addWindow.title('Add Labels')
+
+        self.addWindow.bind('<Control-Return>', self.addYes)
+        self.addWindow.bind('<Escape>', self.addNo)
+
+        self.textLabel = tk.Text(
+            self.addWindow,
+            height=5,
+            width=32
+        )
+        self.textLabel.pack(
+            side=tk.TOP,
+            pady=4,
+            padx=4,
+            fill=tk.X
+        )
+        self.textLabel.focus()
+        yes = tk.Button(
+            self.addWindow,
+            width=5,
+            height=3,
+            text='Add',
+            command=self.addYes
+        )
+        yes.pack(
+            side=tk.LEFT,
+            padx=10,
+            pady=10
+        )
+        no = tk.Button(
+            self.addWindow,
+            width=5,
+            height=3,
+            text='Cancel',
+            command=self.addNo
+        )
+        no.pack(
+            side=tk.LEFT,
+            padx=10,
+            pady=10
+        )
+
+    def addYes(self, event=None):
         input = (self.textLabel.get('1.0', tk.END)).split('\n')
         while '' in input:
             input.remove('')
         for label in input:
-            self.labelBox.insert(tk.END, label)
+            if label not in self.labelBox.get(0, tk.END):
+                self.labelBox.insert(tk.END, label)
+                self.labelBoxNum.insert(tk.END, self.labelBox.size())
         self.textLabel.delete('1.0', tk.END)
-        return
+        self.addWindow.destroy()
+
+    def addNo(self, event=None):
+        self.addWindow.destroy()
 
     def delLabel(self):
         if self.selectedNum != None:
             if msgb.askyesno('Warning', 'Are you sure to delete label \"' + self.selectedTxt + '\"?'):
                 self.labelBox.delete(self.selectedNum)
+                self.labelBoxNum.delete(tk.END)
                 self.selectedTxt = ''
                 self.selectedNum = None
 
     def drawLabel(self):
         if self.selectedNum != None:
-            self.usedLabel.insert(tk.END, self.selectedTxt)
-            self.usedLabel.selection_clear(0, tk.END)
-            self.usedLabel.select_set(tk.END)
+            if self.selectedTxt not in self.usedLabel.get(0, tk.END):
+                self.usedLabel.insert(tk.END, self.selectedTxt)
+                self.usedLabelNum.insert(tk.END, self.usedLabel.size())
+                print('Add: ', self.selectedTxt)
+                self.usedLabel.selection_clear(0, tk.END)
+                self.usedLabel.select_set(tk.END)
 
-            self.draws.append(self.DrawedLabel(self.selectedTxt))
-            self.selectDraw()
+                self.draws.append(self.DrawedLabel(self.selectedTxt))
+                self.selectDraw()
+            else:
+                print('Add faild: ', self.selectedTxt, ' already exists')
 
-    def editLabel(self):
-        return
+    def editLabel(self, event=None):
+        if self.workLabelNum != None:
+            self.rename = tk.Tk()
+            self.rename.title('Edit Label')
 
-    def delDraw(self):
+            self.rename.bind('<Return>', self.editYes)
+            self.rename.bind('<Escape>', self.editNo)
+
+            self.renameBox = tk.Entry(
+                self.rename,
+                width=20,
+            )
+            self.renameBox.pack(
+                side=tk.LEFT,
+                padx=10,
+                pady=10
+            )
+            self.renameBox.insert(0, self.workLabelTxt)
+            self.renameBox.focus()
+            yes = tk.Button(
+                self.rename,
+                width=5,
+                height=3,
+                text='Change',
+                command=self.editYes
+            )
+            yes.pack(
+                side=tk.LEFT,
+                padx=10,
+                pady=10
+            )
+            no = tk.Button(
+                self.rename,
+                width=5,
+                height=3,
+                text='Cancel',
+                command=self.editNo
+            )
+            no.pack(
+                side=tk.LEFT,
+                padx=10,
+                pady=10
+            )
+
+    def editYes(self, event=None):
+        txt = self.renameBox.get()
+        if txt not in self.usedLabel.get(0, tk.END):
+            self.draws[self.workLabelNum[0]].text = txt
+            self.workLabelNumTxt = txt
+            self.usedLabel.delete(self.workLabelNum[0])
+            self.usedLabel.insert(self.workLabelNum[0], txt)
+            self.rename.destroy()
+        elif txt == self.workLabelTxt:
+            print('Nothing changed')
+            self.editNo()
+        else:
+            errMsg = tk.Message(
+                self.rename,
+                text='Label name already exists'
+            )
+            errMsg.pack(
+                side=tk.BOTTOM,
+                padx=5,
+                pady=5,
+                fill=tk.X
+            )
+
+    def editNo(self, event=None):
+        self.rename.destroy()
+
+    def delDraw(self, event=None):
         if self.workLabelNum != None:
             if msgb.askyesno('Warning', 'Are you sure to delete drawn label \"' + self.workLabelTxt + '\"?'):
                 del self.draws[self.workLabelNum[0]]
                 self.usedLabel.delete(self.workLabelNum[0])
+                self.usedLabelNum.delete(tk.END)
                 self.workLabelTxt = ''
                 self.workLabelNum = None
                 self.reDraw()
@@ -660,7 +886,7 @@ class MainWindow():
                 self.reDraw()
                 print('Point 2: ', event.x, event.y)
 
-    ## Graphic Event ##
+    # Graphic Event
     def canvasChange(self, event):
         self.c_width = self.canvas.winfo_width()
         self.c_height = self.canvas.winfo_height()
@@ -735,8 +961,35 @@ class MainWindow():
                     self.canvas.create_oval(
                         x2 - r, y2 - r, x2 + r, y2 + r, fill=color_in, outline=color_out, width=3)
 
+    # Other
+    def showInfo(self):
+        self.info = tk.Tk()
+        self.info.title('Help')
+        msg = tk.Message(
+            self.info,
+            text='Fast Label - 1.0\n\r\n\r' +
+            'Fast Label is an open source tool build by Derek Liu.\n\r\n\r' +
+            '- Support media type:\n\r' +
+            '\t*.jpg *.png *.bmp\n\r' +
+            '\t*.mp4 *.avi *.wmv *.mkv\n\r' +
+            '- Project page:\n\r' +
+            '\thttps://github.com/tankgit/fast-label\n\r' +
+            '- Email: derektanko@gmail.com\n\r'
+            '- GPL-3.0\n\r',
+            width=500
+        )
+        msg.pack(
+            side=tk.LEFT,
+            fill=tk.X,
+            padx=15,
+            pady=15,
+            expand=tk.YES
+        )
 
 # Main
+
+
 root = tk.Tk()
+root.title(PROJECT_NAME + ' - ' + VERSION)
 MainWindow(root)
 root.mainloop()
