@@ -52,7 +52,7 @@ class MainWindow():
 
         # Initialize Frames
         self.initFrames()
-        self.initButtonFrame()
+        self.initMenuFrame()
         self.initLabelFrame()
         self.initImageFrame()
         self.initStatusFrame()
@@ -64,12 +64,12 @@ class MainWindow():
 
     # Window Init
     def initFrames(self):
-        self.buttonFrame = tk.LabelFrame(
+        self.menuFrame = tk.LabelFrame(
             self.main,
             width=500,
             height=50
         )
-        self.buttonFrame.pack(
+        self.menuFrame.pack(
             side=tk.TOP,
             fill=tk.X
         )
@@ -103,9 +103,9 @@ class MainWindow():
             fill=tk.X,
         )
 
-    def initButtonFrame(self):
+    def initMenuFrame(self):
         self.fileBtn = tk.Button(
-            self.buttonFrame,
+            self.menuFrame,
             anchor=tk.CENTER,
             text='Open File',
             width=10,
@@ -119,7 +119,7 @@ class MainWindow():
         )
 
         self.folderBtn = tk.Button(
-            self.buttonFrame,
+            self.menuFrame,
             anchor=tk.CENTER,
             text='Open Folder',
             width=10,
@@ -133,7 +133,7 @@ class MainWindow():
         )
 
         self.saveBtn = tk.Button(
-            self.buttonFrame,
+            self.menuFrame,
             anchor=tk.CENTER,
             text='Save Label',
             width=10,
@@ -145,8 +145,11 @@ class MainWindow():
             padx=10,
             pady=10
         )
+        self.multiBox= tk.LabelFrame(
+            self.menuFrame
+        )
         self.preBtn = tk.Button(
-            self.buttonFrame,
+            self.multiBox,
             anchor=tk.CENTER,
             text='<--',
             width=3,
@@ -159,7 +162,7 @@ class MainWindow():
             pady=10
         )
         self.nxtBtn = tk.Button(
-            self.buttonFrame,
+            self.multiBox,
             anchor=tk.CENTER,
             text='-->',
             width=3,
@@ -172,7 +175,7 @@ class MainWindow():
             pady=10
         )
         self.jumpNum = tk.Entry(
-            self.buttonFrame,
+            self.multiBox,
             width=10,
         )
         self.jumpNum.pack(
@@ -181,7 +184,7 @@ class MainWindow():
             pady=10
         )
         self.jumpGo = tk.Button(
-            self.buttonFrame,
+            self.multiBox,
             anchor=tk.CENTER,
             text='Go',
             width=3,
@@ -194,8 +197,15 @@ class MainWindow():
             pady=10
         )
 
+        self.jumpTime =tk.Button(
+            self.multiBox,
+            text='Jump to time',
+            height=3,
+            command=self.jump2Time
+        )
+
         self.info = tk.Button(
-            self.buttonFrame,
+            self.menuFrame,
             width=5,
             height=3,
             text='Help',
@@ -530,10 +540,22 @@ class MainWindow():
             if typeStr in self.supportImg:
                 self.curImg = 0
                 self.openImg(self.filePath)
+                self.multiBox.pack_forget()
                 self.totalNumStr.set('Total: 1')
             elif typeStr in self.supportVdo:
                 self.openVdo(self.filePath)
-                self.totalNumStr.set('Total: ' + str(self.vdo.get_length()))
+                self.multiBox.pack(
+                    side=tk.LEFT,
+                    padx=10,
+                )
+                self.jumpTime.pack(
+                    side=tk.LEFT,
+                    padx=10,
+                    pady=10
+                )
+                self.totalNumStr.set('Total Frame: ' + str(self.vdo.get_length())+'\nDuration: '+str(self.vdo.get_meta_data()['duration'])+' s')
+                self.framePerSec=self.vdo.get_meta_data()['fps']
+                print(self.framePerSec)
             else:
                 print('File type not support.')
 
@@ -541,6 +563,11 @@ class MainWindow():
         self.fileType = 0
         folder = fd.askdirectory()
         if folder != '' and folder != ():
+            self.jumpTime.pack_forget()
+            self.multiBox.pack(
+                side=tk.LEFT,
+                padx=10,
+            )
             for img in os.listdir(folder):
                 if img[-3:] in self.supportImg:
                     self.files.append(os.path.join(folder, img))
@@ -624,6 +651,32 @@ class MainWindow():
                 self.draws.append(tem)
         self.reDraw()
 
+    def saveLabel(self, event=None):
+        if self.filePath != None:
+            savePath = ''
+            if self.fileType == 0:
+                savePath = self.filePath + '.json'
+            else:
+                path = self.filePath + '-labels'
+                if not os.path.exists(path):
+                    os.mkdir(path)
+                savePath = os.path.join(path, str(self.curImg) + '.json')
+            if len(self.draws) > 0:
+
+                data = {}
+
+                for box in self.draws:
+                    if box.x1 >= 0 or box.x2 >= 0:
+                        data[box.text] = []
+                        data[box.text].append([box.x1, box.y1])
+                        data[box.text].append([box.x2, box.y2])
+                outFile = open(savePath, 'w')
+                json.dump(data, outFile, indent=4)
+                outFile.close()
+                print('Label file saved:', savePath)
+            elif os.path.exists(savePath):
+                os.remove(savePath)
+
     def preImg(self, event=None):
         if self.fileType == 0:
             if len(self.files) > 0:
@@ -652,12 +705,15 @@ class MainWindow():
                     self.curImg += 1
                     self.openFrame()
 
-    def jumpFrame(self):
+    def jumpFrame(self,j2t=None):
         if self.fileType != None:
             if self.jumpNum.get() != '':
                 self.saveLabel()
                 try:
-                    self.curImg = int(self.jumpNum.get())
+                    if j2t==None:
+                        self.curImg = int(self.jumpNum.get())
+                    else:
+                        self.curImg = j2t
                     if self.fileType == 0:
                         self.openImg(self.filePath)
                     else:
@@ -666,31 +722,132 @@ class MainWindow():
                     print(
                         'Error: The input must be a number between 0 to (video length) or (image amount)')
 
-    def saveLabel(self, event=None):
-        if self.filePath != None:
-            savePath = ''
-            if self.fileType == 0:
-                savePath = self.filePath + '.json'
+    def jump2Time(self):
+        self.j2t=tk.Tk()
+        textFrame=tk.LabelFrame(
+            self.j2t
+        )
+        textFrame.pack(
+            side=tk.TOP,
+            fill=tk.X,
+        )
+        self.hour=tk.Entry(
+            textFrame,
+            width=3,
+        )
+        self.hour.pack(
+            side=tk.LEFT,
+            padx=10,
+            pady=10
+        )
+        hourLb=tk.Message(
+            textFrame,
+            text='hour(s)',
+            width=100
+        )
+        hourLb.pack(
+            side=tk.LEFT,
+            pady=10
+        )
+        self.minute=tk.Entry(
+            textFrame,
+            width=3,
+        )
+        self.minute.pack(
+            side=tk.LEFT,
+            padx=10,
+            pady=10
+        )
+        minuteLb=tk.Message(
+            textFrame,
+            text='minute(s)',
+            width=100
+        )
+        minuteLb.pack(
+            side=tk.LEFT,
+            pady=10
+        )
+        self.second=tk.Entry(
+            textFrame,
+            width=3,
+        )
+        self.second.pack(
+            side=tk.LEFT,
+            padx=10,
+            pady=10
+        )
+        secondLb=tk.Message(
+            textFrame,
+            text='second(s)',
+            width=100
+        )
+        secondLb.pack(
+            side=tk.LEFT,
+            pady=10
+        )
+        jump=tk.Button(
+            self.j2t,
+            text='Jump',
+            command=self.jt2Yes
+        )
+        jump.pack(
+            side=tk.RIGHT,
+            padx=10,
+            pady=5
+        )
+        cancel=tk.Button(
+            self.j2t,
+            text='Cancel'
+        )
+        cancel.pack(
+            side=tk.RIGHT,
+            padx=10,
+            pady=5
+        )
+        
+
+
+    def jt2Yes(self, event=None):
+        h=self.hour.get()
+        m=self.minute.get()
+        s=self.second.get()
+        if h=='' and m=='' and s=='':
+            print('No input')
+            return
+        try:
+
+            if h=='':
+                h=0
             else:
-                path = self.filePath + '-labels'
-                if not os.path.exists(path):
-                    os.mkdir(path)
-                savePath = os.path.join(path, str(self.curImg) + '.json')
-            if len(self.draws) > 0:
+                h=int(h)
+                if h<0:
+                    print('Hours should be positive')
+                    return
+            if m=='':
+                m=0
+            else:
+                m=int(m)
+                if m>59 or m<0:
+                    print('Minutes should be 0 to 59')
+                    return
+            if s=='':
+                s=0
+                if s>59 or s<0:
+                    print('Seconds should be 0 to 59')
+                    return
+            else:
+                s=int(s)
+            frame=int((h*60*60+m*60+s)*self.framePerSec)
+            if frame<self.vdo.get_length():
+                self.j2t.destroy()
+                self.jumpFrame(frame)
+            else:
+                print('Frame out of index')
+        except Exception as error:
+            print('Invalid time')
 
-                data = {}
-
-                for box in self.draws:
-                    if box.x1 >= 0 or box.x2 >= 0:
-                        data[box.text] = []
-                        data[box.text].append([box.x1, box.y1])
-                        data[box.text].append([box.x2, box.y2])
-                outFile = open(savePath, 'w')
-                json.dump(data, outFile, indent=4)
-                outFile.close()
-                print('Label file saved:', savePath)
-            elif os.path.exists(savePath):
-                os.remove(savePath)
+    def j2tNo(self):
+        self.j2t.destroy()
 
     # Label Button
     def addLabel(self):
