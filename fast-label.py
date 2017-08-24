@@ -30,7 +30,7 @@ class MainWindow():
         # Variables
         self.main = main
         self.supportImg = ['jpg', 'png', 'bmp']
-        self.supportVdo = ['avi', 'mp4', 'wmv', 'mkv']
+        self.supportVdo = ['avi', 'mp4', 'wmv', 'mkv','.ts']
 
         self.filePath = None
 
@@ -1127,8 +1127,8 @@ class MainWindow():
             text='Fast Label - 1.0\n\r\n\r' +
             'Fast Label is an open source tool build by Derek Liu.\n\r\n\r' +
             '- Support media type:\n\r' +
-            '\t*.jpg *.png *.bmp\n\r' +
-            '\t*.mp4 *.avi *.wmv *.mkv\n\r' +
+            '\t'+str(self.supportImg)+'\n\r' +
+            '\t'+str(self.supportVdo)+'\n\r' +
             '- Project page:\n\r' +
             '\thttps://github.com/tankgit/fast-label\n\r' +
             '- Email: derektanko@gmail.com\n\r'

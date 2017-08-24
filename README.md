@@ -27,6 +27,7 @@ sudo pip install ffmpeg
     - *.mp4
     - *.wmv
     - *.mkv
+    - *.ts
 
 ### Output file
 
